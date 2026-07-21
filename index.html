@@ -182,6 +182,7 @@ canvas{display:block;}
 import * as THREE from 'three';
 
 const CFG={musicVol:0.3,planetVol:0.5,musicOn:true,planetOn:true,camSpeed:60,travelDur:2.5};
+let eRelPos=new THREE.Vector3(),eRelVel=new THREE.Vector3(),inEsoi=false;
 const R=new THREE.WebGLRenderer({antialias:false,powerPreference:'high-performance'});
 R.setSize(innerWidth,innerHeight);R.setPixelRatio(Math.min(devicePixelRatio,1));
 document.body.appendChild(R.domElement);
@@ -633,26 +634,46 @@ function updateCam(dt){
   pMeshes.forEach(pm=>{const d=cam.position.distanceTo(pm.mesh.position);if(d<pm.data.soi&&d<soiDist){soiDist=d;ob=pm;mu=pm.data.µ;gp.copy(pm.mesh.position);}});
   orbitBody=ob;
   if(!ob)mu=muSun;
-  const relPos=ob?new THREE.Vector3().copy(cam.position).sub(gp):cam.position.clone();
-  const r=relPos.length();
-  if(r>0.01){const dir=relPos.clone().negate().normalize();const grav=mu/(r*r);flyVel.addScaledVector(dir,grav*dt);}
-  const thrustAcc=throttle*0.06;
-  if(keys['w'])flyVel.addScaledVector(fwd,thrustAcc*dt);
-  if(keys['s'])flyVel.addScaledVector(fwd,-thrustAcc*dt);
-  if(keys['a'])flyVel.addScaledVector(right,-thrustAcc*dt*0.5);
-  if(keys['d'])flyVel.addScaledVector(right,thrustAcc*dt*0.5);
-  if(keys['q'])flyVel.y+=thrustAcc*dt*0.3;
-  if(keys['e'])flyVel.y-=thrustAcc*dt*0.3;
-  const ms=maxSpeed();const spd=flyVel.length();if(spd>ms)flyVel.multiplyScalar(ms/spd);
-  cam.position.addScaledVector(flyVel,dt);
-  const ratio=ms>0?spd/ms:0;
+  const eEarth=ob&&ob.data.name==='Earth';
+  if(eEarth&&!inEsoi){const eav=ob.data.spd*0.3,ev=new THREE.Vector3(-gp.z*eav,0,gp.x*eav);eRelPos.copy(cam.position).sub(gp);eRelVel.copy(flyVel).sub(ev);inEsoi=true;}
+  if(!eEarth&&inEsoi){flyVel.copy(eRelVel);inEsoi=false;}
+  const thrustAcc=throttle*0.06,ms=maxSpeed();
+  if(eEarth&&inEsoi){
+    const r=eRelPos.length();
+    if(r>0.01){eRelVel.addScaledVector(eRelPos.clone().negate().normalize(),mu/(r*r)*dt);}
+    if(keys['w'])eRelVel.addScaledVector(fwd,thrustAcc*dt);
+    if(keys['s'])eRelVel.addScaledVector(fwd,-thrustAcc*dt);
+    if(keys['a'])eRelVel.addScaledVector(right,-thrustAcc*dt*0.5);
+    if(keys['d'])eRelVel.addScaledVector(right,thrustAcc*dt*0.5);
+    if(keys['q'])eRelVel.y+=thrustAcc*dt*0.3;
+    if(keys['e'])eRelVel.y-=thrustAcc*dt*0.3;
+    const spd=eRelVel.length();if(spd>ms)eRelVel.multiplyScalar(ms/spd);
+    eRelPos.addScaledVector(eRelVel,dt);
+    const eav=ob.data.spd*0.3,ev=new THREE.Vector3(-gp.z*eav,0,gp.x*eav);
+    cam.position.copy(gp).add(eRelPos);flyVel.copy(ev).add(eRelVel);
+  }else{
+    const relPos=ob?new THREE.Vector3().copy(cam.position).sub(gp):cam.position.clone();
+    const r=relPos.length();
+    if(r>0.01){flyVel.addScaledVector(relPos.clone().negate().normalize(),mu/(r*r)*dt);}
+    if(keys['w'])flyVel.addScaledVector(fwd,thrustAcc*dt);
+    if(keys['s'])flyVel.addScaledVector(fwd,-thrustAcc*dt);
+    if(keys['a'])flyVel.addScaledVector(right,-thrustAcc*dt*0.5);
+    if(keys['d'])flyVel.addScaledVector(right,thrustAcc*dt*0.5);
+    if(keys['q'])flyVel.y+=thrustAcc*dt*0.3;
+    if(keys['e'])flyVel.y-=thrustAcc*dt*0.3;
+    const spd=flyVel.length();if(spd>ms)flyVel.multiplyScalar(ms/spd);
+    cam.position.addScaledVector(flyVel,dt);
+  }
   // Orbit line prediction
+  const rOrb=eEarth&&inEsoi?eRelPos.length():ob?new THREE.Vector3().copy(cam.position).sub(gp).length():cam.position.length();
+  const rVec=eEarth&&inEsoi?eRelPos:ob?new THREE.Vector3().copy(cam.position).sub(gp):cam.position.clone();
+  const vVec=eEarth&&inEsoi?eRelVel:flyVel;
   if(orbitLine){scene.remove(orbitLine);orbitLine.geometry.dispose();orbitLine.material.dispose();orbitLine=null;}
-  if(ob&&r>0.01){
-    const hVec=new THREE.Vector3().crossVectors(relPos,flyVel);
-    const h=hVec.length();const spd2=flyVel.lengthSq();const eVal=spd2/2-mu/r;
+  if(ob&&rOrb>0.01){
+    const hVec=new THREE.Vector3().crossVectors(rVec,vVec);
+    const h=hVec.length();const spd2=vVec.lengthSq();const eVal=spd2/2-mu/rOrb;
     const a=-mu/(2*eVal);if(a>0){
-      const eVec=new THREE.Vector3().crossVectors(flyVel,hVec).divideScalar(mu).sub(relPos.clone().normalize());
+      const eVec=new THREE.Vector3().crossVectors(vVec,hVec).divideScalar(mu).sub(rVec.clone().normalize());
       const e=eVec.length();const periapsis=a*(1-e),apoapsis=a*(1+e);
       const p=periapsis*(1+e);const n=hVec.clone().normalize();const pDir=eVec.clone().normalize();const qDir=new THREE.Vector3().crossVectors(n,pDir).normalize();
       const pts=[];for(let i=0;i<=128;i++){const nu=2*Math.PI*i/128;const rNu=p/(1+e*Math.cos(nu));const op=new THREE.Vector3().addScaledVector(pDir,rNu*Math.cos(nu)).addScaledVector(qDir,rNu*Math.sin(nu));op.add(gp);pts.push(op);}
@@ -661,12 +682,12 @@ function updateCam(dt){
       scene.add(orbitLine);
       document.getElementById('tAp').textContent=apoapsis.toFixed(2);document.getElementById('tPe').textContent=periapsis.toFixed(2);
     }}
-  const baseFov=rightHeld?20:60;cam.fov=baseFov+Math.min(1,spd/5)*15;cam.updateProjectionMatrix();
+  const spd=flyVel.length();const baseFov=rightHeld?20:60;cam.fov=baseFov+Math.min(1,spd/5)*15;cam.updateProjectionMatrix();
   vignette.style.opacity=Math.min(1,spd/10)*0.5;
   cam.lookAt(cam.position.clone().add(new THREE.Vector3(-Math.sin(flyYaw)*Math.cos(flyPitch),Math.sin(flyPitch),-Math.cos(flyYaw)*Math.cos(flyPitch)).multiplyScalar(100)));
   if(pNode){let nd=1e9,np=null;pMeshes.forEach(pm=>{const d=cam.position.distanceTo(pm.mesh.position);if(d<nd){nd=d;np=pm;}});if(np&&nd<5){const g=Math.max(0,1-nd/5);pNode.gain.setTargetAtTime(g*g*0.3,actx.currentTime,0.1);const h=parseInt(np.data.tex.charCodeAt(0)||64);pOsc.frequency.setTargetAtTime(100+h*5,actx.currentTime,0.2);}else{pNode.gain.setTargetAtTime(0,actx.currentTime,0.3);}}
-  document.getElementById('tAlt').textContent=ob?(r-ob.data.r).toFixed(2):r<100?r.toFixed(1)+' AU':(r/1000).toFixed(2)+' kly';
-  document.getElementById('tFlySpeed').textContent=spd.toFixed(3)+(ob?'':'/'+ms);
+  document.getElementById('tAlt').textContent=ob?(rOrb-ob.data.r).toFixed(2):rOrb<100?rOrb.toFixed(1)+' AU':(rOrb/1000).toFixed(2)+' kly';
+  document.getElementById('tFlySpeed').textContent=spd.toFixed(3)+(ob?'':'/'+maxSpeed());
   document.getElementById('tMode').textContent=ob?'Orbit':'Free';
   document.getElementById('tThrottle').textContent=(throttle*100).toFixed(0)+'%';
   document.getElementById('tOrbitBody').textContent=ob?ob.data.name:'Sun';
@@ -782,7 +803,7 @@ document.getElementById('introBegin').addEventListener('click',()=>{
   };
   setTimeout(go,600);
 });
-{const ei=pData.findIndex(p=>p.name==='Earth'),ea=oAngles[ei],ex=pData[ei].dist*Math.cos(ea),ez=pData[ei].dist*Math.sin(ea);const or=0.45,ov=Math.sqrt(0.003/or),eav=pData[ei].spd*0.3;cam.position.set(ex,0,ez+or);flyVel.set(-ov-ez*eav,0,ex*eav);flyYaw=0;flyPitch=0;focusI=ei+1;}
+{const ei=pData.findIndex(p=>p.name==='Earth'),ea=oAngles[ei],ex=pData[ei].dist*Math.cos(ea),ez=pData[ei].dist*Math.sin(ea);const or=0.45,ov=Math.sqrt(0.003/or),eav=pData[ei].spd*0.3;cam.position.set(ex,0,ez+or);eRelPos.set(0,0,or);eRelVel.set(-ov,0,0);inEsoi=true;flyVel.set(-ov-ez*eav,0,ex*eav);flyYaw=0;flyPitch=0;focusI=ei+1;}
 
 {const fc=document.createElement('canvas'),fx=fc.getContext('2d'),fl=document.getElementById('favicon');fc.width=32;fc.height=32;
 (function f(){const t=Date.now()/1000;fx.clearRect(0,0,32,32);
