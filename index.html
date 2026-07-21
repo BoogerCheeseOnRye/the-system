@@ -78,14 +78,11 @@ canvas{display:block;}
 #launchPanel .dest{padding:5px 8px;border-radius:3px;cursor:pointer;border:1px solid rgba(200,160,80,0.15);margin-bottom:3px;font-size:11px;display:flex;justify-content:space-between;}
 #launchPanel .dest:hover{background:rgba(200,160,80,0.1);border-color:rgba(200,160,80,0.3);}
 #launchPanel .dest.locked{opacity:0.3;cursor:default;}
-#intro{position:fixed;inset:0;background:rgba(5,8,18,0.96);display:flex;align-items:center;justify-content:center;z-index:100;flex-direction:column;transition:opacity 0.8s;}
+#intro{position:fixed;inset:0;background:rgba(3,5,12,1);display:flex;align-items:center;justify-content:center;z-index:100;flex-direction:column;transition:opacity 0.8s;}
 #intro.hidden{opacity:0;pointer-events:none;}
 #introContent{text-align:center;max-width:480px;}
 #introContent h1{font-size:40px;color:#8af;letter-spacing:8px;text-transform:uppercase;margin-bottom:6px;font-weight:300;}
 #introContent .sub{font-size:11px;color:#445;letter-spacing:3px;text-transform:uppercase;margin-bottom:24px;}
-#introContent .keys{background:rgba(80,120,200,0.05);border:1px solid rgba(80,120,200,0.1);border-radius:6px;padding:14px 20px;margin:0 0 24px;font-size:11px;color:#556;line-height:2;text-align:center;}
-#introContent .keys span{color:#667;}
-#introContent .keys .kb{display:inline-block;background:rgba(80,120,200,0.1);border:1px solid rgba(80,120,200,0.15);border-radius:2px;padding:0 6px;color:#8af;font-size:10px;}
 #introBegin{background:rgba(80,120,200,0.12);border:1px solid rgba(80,120,200,0.3);color:#8af;padding:12px 40px;border-radius:4px;cursor:pointer;font:14px/1 'Courier New',monospace;letter-spacing:3px;text-transform:uppercase;transition:all 0.2s;}
 #introBegin:hover{background:rgba(80,120,200,0.25);border-color:rgba(80,120,200,0.6);}
 </style>
@@ -124,11 +121,7 @@ canvas{display:block;}
 <div id="intro">
   <div id="introContent">
     <h1>THE SYSTEM</h1>
-    <div class="sub">A 3D Solar System Simulation</div>
-    <div class="keys">
-      <span class="kb">Drag</span> to look &middot; <span class="kb">WASD</span> to fly &middot; <span class="kb">Scroll</span> zoom<br>
-      <span class="kb">Tab</span> cycle objects &middot; <span class="kb">G</span> galaxy view
-    </div>
+    <div class="sub">Press ENTER to begin</div>
     <button id="introBegin">ENTER</button>
   </div>
 </div>
@@ -138,6 +131,8 @@ canvas{display:block;}
   <div class="telem"><span class="lbl">FPS</span><span class="val" id="tFps">60</span></div>
   <div class="sep"></div>
   <div class="telem"><span class="lbl">Alt</span><span class="val" id="tAlt">--</span></div>
+  <div class="sep"></div>
+  <div class="telem"><span class="lbl">Speed</span><span class="val" id="tFlySpeed">--</span></div>
   <div class="sep"></div>
   <div class="telem"><span class="lbl">Mode</span><span class="val" id="tMode">Free</span></div>
   <div class="spacer"></div>
@@ -277,34 +272,44 @@ starSystems.forEach(ss=>{
 });
 
 const galaxyGroup=new THREE.Group();scene.add(galaxyGroup);
-const GALAXY_R=12000,GALAXY_THICKNESS=300;
-const GALAXY_ARMS=4,GALAXY_STARS=60000;
-const gPos=new Float32Array(GALAXY_STARS*3),gCol=new Float32Array(GALAXY_STARS*3);
-for(let i=0;i<GALAXY_STARS;i++){
-  const arm=i%GALAXY_ARMS;const armAngle=(arm/GALAXY_ARMS)*Math.PI*2;
-  const dist=Math.random()*GALAXY_R;const spread=(0.05+dist/GALAXY_R*0.35)*(GALAXY_R*0.08);
-  const angle=armAngle+dist/GALAXY_R*3.5+Math.random()*0.4;
-  const x=Math.cos(angle)*dist+(Math.random()-0.5)*spread;
-  const z=Math.sin(angle)*dist+(Math.random()-0.5)*spread;
-  const y=(Math.random()-0.5)*GALAXY_THICKNESS*(0.1+0.9*(1-dist/GALAXY_R));
-  gPos[i*3]=x;gPos[i*3+1]=y;gPos[i*3+2]=z;
-  const t=Math.random(),r2=Math.random();
-  let c;
-  if(r2<0.1){c=new THREE.Color().setHSL(0.0,0.9,0.7+r2*0.2);}
-  else if(r2<0.25){c=new THREE.Color().setHSL(0.6,0.8,0.65+r2*0.15);}
-  else if(r2<0.45){c=new THREE.Color().setHSL(0.08+t*0.12,0.3+t*0.5,0.6+t*0.35);}
-  else if(dist<3000){c=new THREE.Color().setHSL(0.1+t*0.05,0.5,0.7+t*0.2);}
-  else{c=new THREE.Color().setHSL(0.1+t*0.15,0.2+t*0.3,0.7+t*0.25);}
-  gCol[i*3]=c.r;gCol[i*3+1]=c.g;gCol[i*3+2]=c.b;
+const GR=12000,GT=300,CR=3000,AW=2.8;
+const N=60000,gPos=new Float32Array(N*3),gCol=new Float32Array(N*3);
+const _c=new THREE.Color();
+for(let i=0;i<N;i++){
+  const r=Math.random();
+  if(r<0.15){
+    const d=Math.pow(Math.random(),0.6)*CR;
+    const th=Math.random()*Math.PI*2,ph=Math.acos(2*Math.random()-1);
+    const x=Math.sin(ph)*Math.cos(th)*d,z=Math.sin(ph)*Math.sin(th)*d,y=Math.cos(ph)*d*(0.3+Math.random()*0.5);
+    gPos[i*3]=x;gPos[i*3+1]=y;gPos[i*3+2]=z;
+    const l=0.5+Math.random()*0.4;_c.setHSL(0.08+Math.random()*0.04,0.3+Math.random()*0.2,l);
+  }else{
+    const arm=Math.random()<0.5?0:1;
+    const d=CR+Math.pow(Math.random(),0.7)*(GR-CR);
+    const spread=(10+d/GR*40)*(1+Math.random()*0.5);
+    const a=arm*Math.PI+(d/GR)*AW+(Math.random()-0.5)*0.25;
+    const x=Math.cos(a)*d+(Math.random()-0.5)*spread,z=Math.sin(a)*d+(Math.random()-0.5)*spread;
+    const th=Math.atan2(z,x);
+    const armDist=Math.abs(Math.sin((th-arm*Math.PI-d/GR*ARM_WIND)*2));
+    const armProb=1-Math.min(1,armDist*0.8);
+    const y=(Math.random()-0.5)*GT*(0.05+0.95*(1-d/GR));
+    gPos[i*3]=x;gPos[i*3+1]=y;gPos[i*3+2]=z;
+    if(armProb>0.4&&Math.random()<0.7){_c.setHSL(0.55+Math.random()*0.08,0.4+Math.random()*0.3,0.6+Math.random()*0.4);}
+    else if(armProb>0.2){_c.setHSL(0.1+Math.random()*0.1,0.2+Math.random()*0.3,0.55+Math.random()*0.35);}
+    else{_c.setHSL(0.08+Math.random()*0.08,0.15+Math.random()*0.2,0.3+Math.random()*0.3);}
+  }
+  gCol[i*3]=_c.r;gCol[i*3+1]=_c.g;gCol[i*3+2]=_c.b;
 }
 const gG=new THREE.BufferGeometry();gG.setAttribute('position',new THREE.BufferAttribute(gPos,3));gG.setAttribute('color',new THREE.BufferAttribute(gCol,3));
-const galaxyStars=new THREE.Points(gG,new THREE.PointsMaterial({size:3,vertexColors:true,transparent:true,opacity:0.9,blending:THREE.AdditiveBlending,depthWrite:false,sizeAttenuation:true}));
-galaxyGroup.add(galaxyStars);
+galaxyGroup.add(new THREE.Points(gG,new THREE.PointsMaterial({size:3,vertexColors:true,transparent:true,opacity:0.85,blending:THREE.AdditiveBlending,depthWrite:false,sizeAttenuation:true})));
 
-const galCore=new THREE.Mesh(new THREE.SphereGeometry(GALAXY_R*0.06,16,12),new THREE.MeshBasicMaterial({color:0xffdd88,transparent:true,opacity:0.6}));
+const galCore=new THREE.Mesh(new THREE.SphereGeometry(GR*0.08,16,12),new THREE.MeshBasicMaterial({color:0xffdd88,transparent:true,opacity:0.4}));
 galaxyGroup.add(galCore);
-const galCoreGlow=new THREE.Sprite(new THREE.SpriteMaterial({map:mkGlowTex(),color:0xffcc66,transparent:true,opacity:0.25,blending:THREE.AdditiveBlending,depthWrite:false}));
-galCoreGlow.scale.set(GALAXY_R*0.25,GALAXY_R*0.25,1);galaxyGroup.add(galCoreGlow);
+const galCoreGlow=new THREE.Sprite(new THREE.SpriteMaterial({map:mkGlowTex(),color:0xffcc66,transparent:true,opacity:0.3,blending:THREE.AdditiveBlending,depthWrite:false}));
+galCoreGlow.scale.set(GR*0.35,GR*0.35,1);galaxyGroup.add(galCoreGlow);
+
+const galDisk=new THREE.Mesh(new THREE.RingGeometry(CR*0.3,GR*0.95,64,1),new THREE.MeshBasicMaterial({color:0x445577,side:THREE.DoubleSide,transparent:true,opacity:0.06,depthWrite:false}));
+galDisk.rotation.x=-Math.PI/2;galaxyGroup.add(galDisk);
 
 const hBG=15000,bgp=new Float32Array(hBG*3),bgc=new Float32Array(hBG*3);
 for(let i=0;i<hBG;i++){const th=Math.random()*Math.PI*2,ph=Math.acos(2*Math.random()-1),r=GALAXY_R*(0.5+Math.random()*3);bgp[i*3]=r*Math.sin(ph)*Math.cos(th);bgp[i*3+1]=r*Math.sin(ph)*Math.sin(th)*0.3;bgp[i*3+2]=r*Math.cos(ph);const t=Math.random();const c=new THREE.Color().setHSL(t*0.6,0.1,0.3+t*0.3);bgc[i*3]=c.r;bgc[i*3+1]=c.g;bgc[i*3+2]=c.b;}
@@ -441,6 +446,17 @@ function resetGame(){
 
 function setTimeScale(i){tsI=Math.max(0,Math.min(tScales.length-1,i));timeScale=tScales[tsI];document.getElementById('tTime').textContent=timeScale===0?'0x':timeScale+'x';}
 
+function maxSpeed(){
+  if(!GAME.started)return 500;
+  if(GAME.tech['warp'])return 200000;
+  if(GAME.tech['alcm'])return 20000;
+  if(GAME.tech['fusion_r'])return 2000;
+  if(GAME.tech['nuclear'])return 400;
+  if(GAME.tech['ion'])return 150;
+  if(GAME.tech['chem'])return 60;
+  return 20;
+}
+
 function updateCam(dt){
   if(traveling){
     travelT+=dt;const t=Math.min(travelT/travelDur,1);
@@ -458,10 +474,12 @@ function updateCam(dt){
   if(keys['w'])flyVel.add(fwd.clone().multiplyScalar(speed));if(keys['s'])flyVel.add(fwd.clone().multiplyScalar(-speed));
   if(keys['a'])flyVel.add(right.clone().multiplyScalar(-speed));if(keys['d'])flyVel.add(right.clone().multiplyScalar(speed));
   if(keys['q'])flyVel.y+=speed;if(keys['e'])flyVel.y-=speed;
+  const ms=maxSpeed();const spd=flyVel.length();if(spd>ms)flyVel.multiplyScalar(ms/spd);
   flyVel.multiplyScalar(0.88);cam.position.add(flyVel.clone().multiplyScalar(dt*60));
   cam.lookAt(cam.position.clone().add(new THREE.Vector3(-Math.sin(flyYaw)*Math.cos(flyPitch),Math.sin(flyPitch),-Math.cos(flyYaw)*Math.cos(flyPitch)).multiplyScalar(100)));
   const dist=cam.position.length();
   document.getElementById('tAlt').textContent=dist<2?(dist*149597870.7).toFixed(0)+' km':dist<500?dist.toFixed(1)+' AU':(dist/1000).toFixed(2)+' kly';
+  document.getElementById('tFlySpeed').textContent=CFG.camSpeed+'/'+ms;
   galaxyGroup.visible=dist>3000;
 }
 
@@ -508,7 +526,7 @@ window.addEventListener('mousemove',e=>{
   flyYaw-=dx*0.004;flyPitch=Math.max(-Math.PI/2+0.01,Math.min(Math.PI/2-0.01,flyPitch-dy*0.004));
   lastM={x:e.clientX,y:e.clientY};
 });
-window.addEventListener('wheel',e=>{CFG.camSpeed=Math.max(5,Math.min(500,CFG.camSpeed-e.deltaY*0.05));});
+window.addEventListener('wheel',e=>{CFG.camSpeed=Math.max(5,Math.min(maxSpeed(),CFG.camSpeed-e.deltaY*0.05));});
 window.addEventListener('click',()=>initA(),{once:true});
 
 document.getElementById('btnTimeDown').addEventListener('click',()=>setTimeScale(tsI-1));
@@ -529,13 +547,14 @@ document.getElementById('introBegin').addEventListener('click',()=>{
   document.getElementById('gameBar').style.display='flex';
   GAME.started=true;
   if(!loadGame()){
-    showNotif('Genesis','Gather resources, build structures, and expand to the stars.',[
-      {label:'Begin',fn:()=>{}}
-    ]);
+    showNotif('THE SYSTEM','Your thrusters are limited. Speed is capped by your technology level.<br><br><b>Research</b> propulsion tech to fly faster.<br><b>Build</b> infrastructure to gather resources.<br><b>Launch</b> rockets to distant worlds.<br><br><b>WASD</b> fly · <b>Drag</b> look · <b>Scroll</b> zoom · <b>Q/E</b> up/down · <b>Tab</b> cycle<br><b>B</b> Build · <b>T</b> Research · <b>L</b> Launch · <b>G</b> Galaxy<br><br><span style="font-size:9px;opacity:0.5">Current max speed: <b>20 AU/s</b>. Research Chemical Rockets to reach 60.</span>',[{label:'Begin',fn:()=>{}}]);
   }
+  CFG.camSpeed=Math.min(CFG.camSpeed,maxSpeed());
   initA();
 });
 cam.position.set(50,25,70);flyYaw=-Math.PI/6;flyPitch=-0.15;focusI=0;
+
+
 </script>
 </body>
 </html>
