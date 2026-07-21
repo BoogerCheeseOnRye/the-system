@@ -105,7 +105,7 @@ canvas{display:block;}
   <button class="cb" id="btnResearch" style="font-size:9px;">T Research</button>
   <button class="cb" id="btnBuild" style="font-size:9px;">B Build</button>
   <button class="cb" id="btnLaunch" style="font-size:9px;">L Launch</button>
-  <button class="cb" id="btnGalaxy" style="font-size:9px;">G Galaxy</button>
+  <button class="cb" id="btnRoadster" style="font-size:9px;">R Roadster</button>
 </div>
 <div id="researchPanel"></div>
 <div id="buildPanel"></div>
@@ -420,7 +420,7 @@ const slG=new THREE.BufferGeometry();slG.setAttribute('position',new THREE.Buffe
 const speedLines=new THREE.LineSegments(slG,new THREE.LineBasicMaterial({color:0x88ccff,transparent:true,opacity:0,blending:THREE.AdditiveBlending,depthWrite:false}));
 const slGroup=new THREE.Group();slGroup.add(speedLines);scene.add(slGroup);
 
-const GAME={started:false,gameTime:0,energy:50,matter:30,data:10,pop:1,energyRate:0,matterRate:0,dataRate:0,popRate:0,popCap:10,kardashev:0.7,tech:{},buildings:[],rockets:0,launchCap:false,launchTimer:0,launchTarget:null,galaxyView:false,newGamePlus:0};
+const GAME={started:false,gameTime:0,energy:50,matter:30,data:10,pop:1,energyRate:0,matterRate:0,dataRate:0,popRate:0,popCap:10,kardashev:0.7,tech:{},buildings:[],rockets:0,launchCap:false,launchTimer:0,launchTarget:null,roadsterView:false,newGamePlus:0};
 const TECH_TREE={
   power:[
     {id:'solar1',name:'Basic Solar',desc:'Harness starlight',cost:{data:30},req:[],effect:{energyRate:1}},
@@ -504,6 +504,7 @@ let timeScale=1.0;const tScales=[0,0.1,0.25,0.5,1,2,5,10];let tsI=4;
 let focusI=0;
 let traveling=false,travelT=0,travelFrom=new THREE.Vector3(),travelDest=new THREE.Vector3(),travelDur=CFG.travelDur;
 let activePanel=null,savedCamPos=null,savedCamYaw=0,savedCamPitch=0;
+let roadsterCamAngle=0,roadsterCamDist=0.5,roadsterCamHeight=0.2;
 
 function focusObj(i){focusI=i;const o=i<allObjs.length?allObjs[i]:null;document.getElementById('focusName').textContent=o?o.name:'Free';document.getElementById('focusType').textContent=o?(o.type.charAt(0).toUpperCase()+o.type.slice(1)):'';}
 
@@ -517,7 +518,7 @@ function exgalacticTravel(){
 
 function resetGame(){
   localStorage.removeItem('solsave10');
-  Object.assign(GAME,{started:false,gameTime:0,energy:50,matter:30,data:10,pop:1,energyRate:0,matterRate:0,dataRate:0,popRate:0,popCap:10,kardashev:0.7,tech:{},buildings:[],rockets:0,launchCap:false,launchTimer:0,launchTarget:null,galaxyView:false,newGamePlus:GAME.newGamePlus+1});
+  Object.assign(GAME,{started:false,gameTime:0,energy:50,matter:30,data:10,pop:1,energyRate:0,matterRate:0,dataRate:0,popRate:0,popCap:10,kardashev:0.7,tech:{},buildings:[],rockets:0,launchCap:false,launchTimer:0,launchTarget:null,roadsterView:false,newGamePlus:GAME.newGamePlus+1});
   updateGameBar();
 }
 
@@ -535,6 +536,15 @@ function maxSpeed(){
 }
 
 function updateCam(dt){
+  if(GAME.roadsterView){
+    roadsterCamAngle+=dt*0.25;
+    const rdPos=roadster.position;
+    cam.position.set(rdPos.x+Math.cos(roadsterCamAngle)*roadsterCamDist,rdPos.y+roadsterCamHeight,rdPos.z+Math.sin(roadsterCamAngle)*roadsterCamDist);
+    cam.lookAt(rdPos);
+    document.getElementById('tAlt').textContent=(cam.position.distanceTo(rdPos)*149597870.7).toFixed(0)+' km';
+    document.getElementById('tMode').textContent='Roadster View';
+    return;
+  }
   if(traveling){
     travelT+=dt;const t=Math.min(travelT/travelDur,1);
     const ease=t<0.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2;
@@ -613,13 +623,13 @@ addEventListener('resize',()=>{cam.aspect=innerWidth/innerHeight;cam.updateProje
 window.addEventListener('keydown',e=>{
   keys[e.key.toLowerCase()]=true;
   if(e.key==='Tab'&&GAME.tech['alcm']){e.preventDefault();let n=focusI+1;if(n>=allObjs.length)n=0;travelTo(n);}
-  if(e.key==='Escape'){['researchPanel','buildPanel','launchPanel','objectMenu','settingsPanel'].forEach(id=>document.getElementById(id).classList.remove('open'));activePanel=null;}
+  if(e.key==='Escape'){['researchPanel','buildPanel','launchPanel','objectMenu','settingsPanel'].forEach(id=>document.getElementById(id).classList.remove('open'));activePanel=null;if(GAME.roadsterView){GAME.roadsterView=false;if(savedCamPos){cam.position.copy(savedCamPos);flyYaw=savedCamYaw;flyPitch=savedCamPitch;}}}
   if(e.key==='='||e.key==='+')setTimeScale(tsI+1);
   if(e.key==='-')setTimeScale(tsI-1);
   if(GAME.started&&e.key==='b'){const p=document.getElementById('buildPanel');if(activePanel==='build'){p.classList.remove('open');activePanel=null;}else{['researchPanel','launchPanel','objectMenu','settingsPanel'].forEach(id=>document.getElementById(id).classList.remove('open'));p.classList.add('open');activePanel='build';renderBuild();}}
   if(GAME.started&&e.key==='t'){const p=document.getElementById('researchPanel');if(activePanel==='research'){p.classList.remove('open');activePanel=null;}else{['buildPanel','launchPanel','objectMenu','settingsPanel'].forEach(id=>document.getElementById(id).classList.remove('open'));p.classList.add('open');activePanel='research';renderResearch();}}
   if(GAME.started&&e.key==='l'){const p=document.getElementById('launchPanel');if(activePanel==='launch'){p.classList.remove('open');activePanel=null;}else{['buildPanel','researchPanel','objectMenu','settingsPanel'].forEach(id=>document.getElementById(id).classList.remove('open'));p.classList.add('open');activePanel='launch';renderLaunch();}}
-  if(e.key==='g'){GAME.galaxyView=!GAME.galaxyView;galaxyGroup.visible=GAME.galaxyView;if(GAME.galaxyView){savedCamPos=cam.position.clone();savedCamYaw=flyYaw;savedCamPitch=flyPitch;flyVel.set(0,0,0);cam.position.set(0,15000,0);flyPitch=-Math.PI/2;flyYaw=0;}else if(savedCamPos){cam.position.copy(savedCamPos);flyYaw=savedCamYaw;flyPitch=savedCamPitch;}}
+  if(e.key==='r'){GAME.roadsterView=!GAME.roadsterView;if(GAME.roadsterView){savedCamPos=cam.position.clone();savedCamYaw=flyYaw;savedCamPitch=flyPitch;roadsterCamAngle=Math.random()*Math.PI*2;flyVel.set(0,0,0);}else if(savedCamPos){cam.position.copy(savedCamPos);flyYaw=savedCamYaw;flyPitch=savedCamPitch;}}
 });
 window.addEventListener('keyup',e=>{keys[e.key.toLowerCase()]=false;});
 window.addEventListener('mousedown',e=>{if(e.button===0){drag=true;lastM={x:e.clientX,y:e.clientY};}if(e.button===2){cam.fov=20;cam.updateProjectionMatrix();}});
@@ -640,7 +650,7 @@ document.getElementById('btnSettings').addEventListener('click',()=>{const p=doc
 document.getElementById('btnResearch').addEventListener('click',()=>{const p=document.getElementById('researchPanel');if(activePanel==='research'){p.classList.remove('open');activePanel=null;}else{['buildPanel','launchPanel','objectMenu','settingsPanel'].forEach(id=>document.getElementById(id).classList.remove('open'));p.classList.add('open');activePanel='research';renderResearch();}});
 document.getElementById('btnBuild').addEventListener('click',()=>{const p=document.getElementById('buildPanel');if(activePanel==='build'){p.classList.remove('open');activePanel=null;}else{['researchPanel','launchPanel','objectMenu','settingsPanel'].forEach(id=>document.getElementById(id).classList.remove('open'));p.classList.add('open');activePanel='build';renderBuild();}});
 document.getElementById('btnLaunch').addEventListener('click',()=>{const p=document.getElementById('launchPanel');if(activePanel==='launch'){p.classList.remove('open');activePanel=null;}else{['researchPanel','buildPanel','objectMenu','settingsPanel'].forEach(id=>document.getElementById(id).classList.remove('open'));p.classList.add('open');activePanel='launch';renderLaunch();}});
-document.getElementById('btnGalaxy').addEventListener('click',()=>{GAME.galaxyView=!GAME.galaxyView;galaxyGroup.visible=GAME.galaxyView;if(GAME.galaxyView){savedCamPos=cam.position.clone();savedCamYaw=flyYaw;savedCamPitch=flyPitch;flyVel.set(0,0,0);cam.position.set(0,15000,0);flyPitch=-Math.PI/2;flyYaw=0;}else if(savedCamPos){cam.position.copy(savedCamPos);flyYaw=savedCamYaw;flyPitch=savedCamPitch;}});
+document.getElementById('btnRoadster').addEventListener('click',()=>{GAME.roadsterView=!GAME.roadsterView;if(GAME.roadsterView){savedCamPos=cam.position.clone();savedCamYaw=flyYaw;savedCamPitch=flyPitch;roadsterCamAngle=Math.random()*Math.PI*2;flyVel.set(0,0,0);}else if(savedCamPos){cam.position.copy(savedCamPos);flyYaw=savedCamYaw;flyPitch=savedCamPitch;}});
 document.getElementById('setMusic').addEventListener('input',e=>{CFG.musicVol=e.target.value/100;if(mGain)mGain.gain.value=CFG.musicVol;});
 document.getElementById('setPlanetAudio').addEventListener('input',e=>{CFG.planetVol=e.target.value/100;if(pGain)pGain.gain.value=CFG.planetVol;});
 
