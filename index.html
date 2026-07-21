@@ -326,9 +326,9 @@ fetch('bsc5p_3d_min.json').then(r=>r.json()).then(d=>{
   });
   const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(p,3));g.setAttribute('color',new THREE.BufferAttribute(col,3));g.setAttribute('aSize',new THREE.BufferAttribute(sz,1));
   starGroup.add(new THREE.Points(g,new THREE.PointsMaterial({size:3,vertexColors:true,transparent:true,opacity:0.85,sizeAttenuation:true,depthWrite:false})));
-  const uv=top.map(s=>new THREE.Vector3(s.x,s.y,s.z).normalize()),thr=Math.cos(6*Math.PI/180),lp=[];
-  for(let i=0;i<uv.length&&lp.length<15000;i++)for(let j=i+1;j<uv.length;j++)if(uv[i].dot(uv[j])>thr&&top[i].N*top[j].N>5){const a=top[i],b=top[j];lp.push(new THREE.Vector3(a.x*SC,a.y*SC,a.z*SC),new THREE.Vector3(b.x*SC,b.y*SC,b.z*SC));}
-  if(lp.length){const lg=new THREE.BufferGeometry().setFromPoints(lp);starGroup.add(new THREE.LineSegments(lg,new THREE.LineBasicMaterial({color:0x8899cc,transparent:true,opacity:0.04})));}
+  const uv=top.map(s=>new THREE.Vector3(s.x,s.y,s.z).normalize()),thr=Math.cos(8*Math.PI/180),lp=[];
+  for(let i=0;i<uv.length&&lp.length<25000;i++)for(let j=i+1;j<uv.length;j++)if(uv[i].dot(uv[j])>thr&&top[i].N*top[j].N>1){const a=top[i],b=top[j];lp.push(new THREE.Vector3(a.x*SC,a.y*SC,a.z*SC),new THREE.Vector3(b.x*SC,b.y*SC,b.z*SC));}
+  if(lp.length){const lg=new THREE.BufferGeometry().setFromPoints(lp);starGroup.add(new THREE.LineSegments(lg,new THREE.LineBasicMaterial({color:0x88bbff,transparent:true,opacity:0.2})));}
   top.slice(0,100).forEach((s,i)=>{
     const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:cTex,color:new THREE.Color(s.K.r,s.K.g,s.K.b),transparent:true,opacity:0.12,blending:THREE.AdditiveBlending,depthWrite:false}));
     sp.position.set(s.x*SC,s.y*SC,s.z*SC);sp.scale.set(sz[i]*6,sz[i]*6,1);starGroup.add(sp);
