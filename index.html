@@ -574,7 +574,7 @@ let drag=false,lastM={x:0,y:0},rightHeld=false;
 let timeScale=1.0;const tScales=[0,0.1,0.25,0.5,1,2,5,10];let tsI=4;
 let focusI=0;
 let traveling=false,travelT=0,travelFrom=new THREE.Vector3(),travelDest=new THREE.Vector3(),travelDur=CFG.travelDur;
-let activePanel=null,savedCamPos=null,savedCamYaw=0,savedCamPitch=0;
+let activePanel=null,savedCamPos=null,savedCamYaw=0,savedCamPitch=0,savedERelPos=null,savedERelVel=null,savedInEsoi=false,savedFlyVel=null;
 let roadsterCamAngle=0,roadsterCamDist=0.5,roadsterCamHeight=0.2;
 let orbitBody=null,orbitLine=null,throttle=0,thrustOn=false;
 
@@ -739,13 +739,13 @@ window.addEventListener('keydown',e=>{
   if(e.key==='Control')throttle=Math.max(0,throttle-0.05);
   if(e.key===' '){thrustOn=!thrustOn;throttle=thrustOn?1:0;}
   if(e.key==='Tab'&&GAME.tech['alcm']){e.preventDefault();let n=focusI+1;if(n>=allObjs.length)n=0;travelTo(n);}
-  if(e.key==='Escape'){['researchPanel','buildPanel','launchPanel','objectMenu','settingsPanel'].forEach(id=>document.getElementById(id).classList.remove('open'));activePanel=null;if(GAME.roadsterView){GAME.roadsterView=false;if(savedCamPos){cam.position.copy(savedCamPos);flyYaw=savedCamYaw;flyPitch=savedCamPitch;}}}
+  if(e.key==='Escape'){['researchPanel','buildPanel','launchPanel','objectMenu','settingsPanel'].forEach(id=>document.getElementById(id).classList.remove('open'));activePanel=null;if(GAME.roadsterView){GAME.roadsterView=false;if(savedCamPos){cam.position.copy(savedCamPos);flyYaw=savedCamYaw;flyPitch=savedCamPitch;if(savedFlyVel){flyVel.copy(savedFlyVel);}if(savedInEsoi&&savedERelPos){eRelPos.copy(savedERelPos);eRelVel.copy(savedERelVel);inEsoi=true;}else{inEsoi=false;}}}}
   if(e.key==='='||e.key==='+')setTimeScale(tsI+1);
   if(e.key==='-')setTimeScale(tsI-1);
   if(GAME.started&&e.key==='b'){const p=document.getElementById('buildPanel');if(activePanel==='build'){p.classList.remove('open');activePanel=null;}else{['researchPanel','launchPanel','objectMenu','settingsPanel'].forEach(id=>document.getElementById(id).classList.remove('open'));p.classList.add('open');activePanel='build';renderBuild();}}
   if(GAME.started&&e.key==='t'){const p=document.getElementById('researchPanel');if(activePanel==='research'){p.classList.remove('open');activePanel=null;}else{['buildPanel','launchPanel','objectMenu','settingsPanel'].forEach(id=>document.getElementById(id).classList.remove('open'));p.classList.add('open');activePanel='research';renderResearch();}}
   if(GAME.started&&e.key==='l'){const p=document.getElementById('launchPanel');if(activePanel==='launch'){p.classList.remove('open');activePanel=null;}else{['buildPanel','researchPanel','objectMenu','settingsPanel'].forEach(id=>document.getElementById(id).classList.remove('open'));p.classList.add('open');activePanel='launch';renderLaunch();}}
-  if(e.key==='r'){GAME.roadsterView=!GAME.roadsterView;if(GAME.roadsterView){savedCamPos=cam.position.clone();savedCamYaw=flyYaw;savedCamPitch=flyPitch;roadsterCamAngle=Math.random()*Math.PI*2;flyVel.set(0,0,0);}else if(savedCamPos){cam.position.copy(savedCamPos);flyYaw=savedCamYaw;flyPitch=savedCamPitch;}}
+  if(e.key==='r'){GAME.roadsterView=!GAME.roadsterView;if(GAME.roadsterView){savedCamPos=cam.position.clone();savedCamYaw=flyYaw;savedCamPitch=flyPitch;savedFlyVel=flyVel.clone();savedERelPos=eRelPos.clone();savedERelVel=eRelVel.clone();savedInEsoi=inEsoi;roadsterCamAngle=Math.random()*Math.PI*2;flyVel.set(0,0,0);}else if(savedCamPos){cam.position.copy(savedCamPos);flyYaw=savedCamYaw;flyPitch=savedCamPitch;if(savedFlyVel){flyVel.copy(savedFlyVel);}if(savedInEsoi&&savedERelPos){eRelPos.copy(savedERelPos);eRelVel.copy(savedERelVel);inEsoi=true;}else{inEsoi=false;}}}
 });
 window.addEventListener('keyup',e=>{keys[e.key.toLowerCase()]=false;});
 window.addEventListener('mousedown',e=>{if(e.button===0){drag=true;lastM={x:e.clientX,y:e.clientY};}if(e.button===2)rightHeld=true;});
@@ -766,7 +766,7 @@ document.getElementById('btnSettings').addEventListener('click',()=>{const p=doc
 document.getElementById('btnResearch').addEventListener('click',()=>{const p=document.getElementById('researchPanel');if(activePanel==='research'){p.classList.remove('open');activePanel=null;}else{['buildPanel','launchPanel','objectMenu','settingsPanel'].forEach(id=>document.getElementById(id).classList.remove('open'));p.classList.add('open');activePanel='research';renderResearch();}});
 document.getElementById('btnBuild').addEventListener('click',()=>{const p=document.getElementById('buildPanel');if(activePanel==='build'){p.classList.remove('open');activePanel=null;}else{['researchPanel','launchPanel','objectMenu','settingsPanel'].forEach(id=>document.getElementById(id).classList.remove('open'));p.classList.add('open');activePanel='build';renderBuild();}});
 document.getElementById('btnLaunch').addEventListener('click',()=>{const p=document.getElementById('launchPanel');if(activePanel==='launch'){p.classList.remove('open');activePanel=null;}else{['researchPanel','buildPanel','objectMenu','settingsPanel'].forEach(id=>document.getElementById(id).classList.remove('open'));p.classList.add('open');activePanel='launch';renderLaunch();}});
-document.getElementById('btnRoadster').addEventListener('click',()=>{GAME.roadsterView=!GAME.roadsterView;if(GAME.roadsterView){savedCamPos=cam.position.clone();savedCamYaw=flyYaw;savedCamPitch=flyPitch;roadsterCamAngle=Math.random()*Math.PI*2;flyVel.set(0,0,0);}else if(savedCamPos){cam.position.copy(savedCamPos);flyYaw=savedCamYaw;flyPitch=savedCamPitch;}});
+document.getElementById('btnRoadster').addEventListener('click',()=>{GAME.roadsterView=!GAME.roadsterView;if(GAME.roadsterView){savedCamPos=cam.position.clone();savedCamYaw=flyYaw;savedCamPitch=flyPitch;savedFlyVel=flyVel.clone();savedERelPos=eRelPos.clone();savedERelVel=eRelVel.clone();savedInEsoi=inEsoi;roadsterCamAngle=Math.random()*Math.PI*2;flyVel.set(0,0,0);}else if(savedCamPos){cam.position.copy(savedCamPos);flyYaw=savedCamYaw;flyPitch=savedCamPitch;if(savedFlyVel){flyVel.copy(savedFlyVel);}if(savedInEsoi&&savedERelPos){eRelPos.copy(savedERelPos);eRelVel.copy(savedERelVel);inEsoi=true;}else{inEsoi=false;}}});
 document.getElementById('setMusic').addEventListener('input',e=>{CFG.musicVol=e.target.value/100;if(mGain)mGain.gain.value=CFG.musicVol;});
 document.getElementById('setPlanetAudio').addEventListener('input',e=>{CFG.planetVol=e.target.value/100;if(pGain)pGain.gain.value=CFG.planetVol;});
 
