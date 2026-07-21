@@ -343,6 +343,19 @@ const warpG=new THREE.BufferGeometry();warpG.setAttribute('position',new THREE.B
 const warpPts=new THREE.Points(warpG,new THREE.PointsMaterial({color:0x88aaff,size:2.5,transparent:true,opacity:0.8,blending:THREE.AdditiveBlending,depthWrite:false}));warpPts.visible=false;
 scene.add(warpPts);
 
+const SLN=300,slP=new Float32Array(SLN*6);
+for(let i=0;i<SLN;i++){
+  const th=Math.random()*Math.PI*2,ph=Math.acos(2*Math.random()-1),r=2+Math.random()*15;
+  const cx=r*Math.sin(ph)*Math.cos(th),cy=r*Math.sin(ph)*Math.sin(th),cz=r*Math.cos(ph);
+  const ox=Math.random()-0.5,oy=Math.random()-0.5,oz=Math.random()-0.5;
+  const ol=Math.sqrt(ox*ox+oy*oy+oz*oz)||1;
+  slP[i*6]=cx+ox/ol*0.5;slP[i*6+1]=cy+oy/ol*0.5;slP[i*6+2]=cz+oz/ol*0.5;
+  slP[i*6+3]=cx-ox/ol*0.5;slP[i*6+4]=cy-oy/ol*0.5;slP[i*6+5]=cz-oz/ol*0.5;
+}
+const slG=new THREE.BufferGeometry();slG.setAttribute('position',new THREE.BufferAttribute(slP,3));
+const speedLines=new THREE.LineSegments(slG,new THREE.LineBasicMaterial({color:0x88ccff,transparent:true,opacity:0,blending:THREE.AdditiveBlending,depthWrite:false}));
+const slGroup=new THREE.Group();slGroup.add(speedLines);scene.add(slGroup);
+
 const GAME={started:false,gameTime:0,energy:50,matter:30,data:10,pop:1,energyRate:0,matterRate:0,dataRate:0,popRate:0,popCap:10,kardashev:0.7,tech:{},buildings:[],rockets:0,launchCap:false,launchTimer:0,launchTarget:null,galaxyView:false,newGamePlus:0};
 const TECH_TREE={
   power:[
@@ -448,13 +461,13 @@ function setTimeScale(i){tsI=Math.max(0,Math.min(tScales.length-1,i));timeScale=
 
 function maxSpeed(){
   if(!GAME.started)return 500;
-  if(GAME.tech['warp'])return 200000;
-  if(GAME.tech['alcm'])return 20000;
-  if(GAME.tech['fusion_r'])return 2000;
-  if(GAME.tech['nuclear'])return 400;
-  if(GAME.tech['ion'])return 150;
-  if(GAME.tech['chem'])return 60;
-  return 20;
+  if(GAME.tech['warp'])return 20000;
+  if(GAME.tech['alcm'])return 2000;
+  if(GAME.tech['fusion_r'])return 200;
+  if(GAME.tech['nuclear'])return 50;
+  if(GAME.tech['ion'])return 20;
+  if(GAME.tech['chem'])return 8;
+  return 2;
 }
 
 function updateCam(dt){
@@ -475,7 +488,18 @@ function updateCam(dt){
   if(keys['a'])flyVel.add(right.clone().multiplyScalar(-speed));if(keys['d'])flyVel.add(right.clone().multiplyScalar(speed));
   if(keys['q'])flyVel.y+=speed;if(keys['e'])flyVel.y-=speed;
   const ms=maxSpeed();const spd=flyVel.length();if(spd>ms)flyVel.multiplyScalar(ms/spd);
+  const ratio=ms>0?spd/ms:0;
   flyVel.multiplyScalar(0.88);cam.position.add(flyVel.clone().multiplyScalar(dt*60));
+  slGroup.position.copy(cam.position);
+  if(ratio>0.05&&spd>0.3){
+    const dir=flyVel.clone().normalize();
+    const up=Math.abs(dir.y)<0.99?new THREE.Vector3(0,1,0):new THREE.Vector3(1,0,0);
+    const right=new THREE.Vector3().crossVectors(dir,up).normalize();
+    const realUp=new THREE.Vector3().crossVectors(right,dir);
+    const m=new THREE.Matrix4().makeBasis(right,realUp,dir);
+    slGroup.quaternion.setFromRotationMatrix(m);
+    speedLines.material.opacity=Math.min(1,ratio*2)*0.5;
+  }else{speedLines.material.opacity=0;}
   cam.lookAt(cam.position.clone().add(new THREE.Vector3(-Math.sin(flyYaw)*Math.cos(flyPitch),Math.sin(flyPitch),-Math.cos(flyYaw)*Math.cos(flyPitch)).multiplyScalar(100)));
   const dist=cam.position.length();
   document.getElementById('tAlt').textContent=dist<2?(dist*149597870.7).toFixed(0)+' km':dist<500?dist.toFixed(1)+' AU':(dist/1000).toFixed(2)+' kly';
@@ -547,12 +571,12 @@ document.getElementById('introBegin').addEventListener('click',()=>{
   document.getElementById('gameBar').style.display='flex';
   GAME.started=true;
   if(!loadGame()){
-    showNotif('THE SYSTEM','Your thrusters are limited. Speed is capped by your technology level.<br><br><b>Research</b> propulsion tech to fly faster.<br><b>Build</b> infrastructure to gather resources.<br><b>Launch</b> rockets to distant worlds.<br><br><b>WASD</b> fly · <b>Drag</b> look · <b>Scroll</b> zoom · <b>Q/E</b> up/down · <b>Tab</b> cycle<br><b>B</b> Build · <b>T</b> Research · <b>L</b> Launch · <b>G</b> Galaxy<br><br><span style="font-size:9px;opacity:0.5">Current max speed: <b>20 AU/s</b>. Research Chemical Rockets to reach 60.</span>',[{label:'Begin',fn:()=>{}}]);
+    showNotif('THE SYSTEM','Your thrusters are limited. Speed is capped by your technology level.<br><br><b>Research</b> propulsion tech to fly faster.<br><b>Build</b> infrastructure to gather resources.<br><b>Launch</b> rockets to distant worlds.<br><br><b>WASD</b> fly · <b>Drag</b> look · <b>Scroll</b> zoom · <b>Q/E</b> up/down · <b>Tab</b> cycle<br><b>B</b> Build · <b>T</b> Research · <b>L</b> Launch · <b>G</b> Galaxy<br><br><span style="font-size:9px;opacity:0.5">Current max speed: <b>2 AU/s</b>. Research Chemical Rockets to reach 8.</span>',[{label:'Begin',fn:()=>{}}]);
   }
   CFG.camSpeed=Math.min(CFG.camSpeed,maxSpeed());
   initA();
 });
-cam.position.set(50,25,70);flyYaw=-Math.PI/6;flyPitch=-0.15;focusI=0;
+cam.position.set(5,2.5,3.5);flyYaw=-1.2;flyPitch=-0.12;focusI=3;
 
 
 </script>
