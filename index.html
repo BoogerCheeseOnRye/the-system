@@ -290,7 +290,7 @@ for(let i=0;i<N;i++){
     const a=arm*Math.PI+(d/GR)*AW+(Math.random()-0.5)*0.25;
     const x=Math.cos(a)*d+(Math.random()-0.5)*spread,z=Math.sin(a)*d+(Math.random()-0.5)*spread;
     const th=Math.atan2(z,x);
-    const armDist=Math.abs(Math.sin((th-arm*Math.PI-d/GR*ARM_WIND)*2));
+    const armDist=Math.abs(Math.sin((th-arm*Math.PI-d/GR*AW)*2));
     const armProb=1-Math.min(1,armDist*0.8);
     const y=(Math.random()-0.5)*GT*(0.05+0.95*(1-d/GR));
     gPos[i*3]=x;gPos[i*3+1]=y;gPos[i*3+2]=z;
