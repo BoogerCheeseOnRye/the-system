@@ -36,4 +36,4 @@ A 3D solar system / galaxy simulation built with Three.js. Open in a browser and
 
 ## How to run
 
-Open `v10_solar_system.html` in any modern browser. No server required.
+Open `index.html` in any modern browser. No server required.
