@@ -86,6 +86,29 @@ canvas{display:block;}
 #introContent .sub{font-size:11px;color:#445;letter-spacing:3px;text-transform:uppercase;margin-bottom:24px;}
 #introBegin{background:rgba(80,120,200,0.12);border:1px solid rgba(80,120,200,0.3);color:#8af;padding:12px 40px;border-radius:4px;cursor:pointer;font:14px/1 'Courier New',monospace;letter-spacing:3px;text-transform:uppercase;transition:all 0.2s;}
 #introBegin:hover{background:rgba(80,120,200,0.25);border-color:rgba(80,120,200,0.6);}
+#titleGlitch{display:inline-block;margin-bottom:4px;font-size:42px;font-weight:200;letter-spacing:8px;text-transform:uppercase;color:#8af;font-family:'Courier New',monospace;text-shadow:0 0 10px rgba(136,170,255,0.4),0 0 30px rgba(136,170,255,0.15);user-select:none;}
+#titleGlitch span{display:inline-block;transition:color 0.1s;}
+#titleGlitch span.sp{width:24px;}
+#titleGlitch span.flick{color:#f6f;animation:glitchPulse 0.1s;}
+@keyframes glitchPulse{0%{opacity:1;transform:translate(0);}25%{opacity:0.7;transform:translate(1px,-1px) scaleX(-1);}50%{opacity:1;transform:translate(-1px,0);}75%{opacity:0.8;transform:translate(0,1px);}100%{opacity:1;transform:translate(0);}}
+#glitchOverlay{position:fixed;inset:0;z-index:99;pointer-events:none;background:transparent;display:none;}
+#glitchOverlay.active{display:block;animation:glitchTransition 1s ease-out forwards;}
+@keyframes glitchTransition{
+  0%{background:transparent;transform:skew(0deg);}
+  6%{background:rgba(255,0,0,0.12);transform:skew(-4deg);}
+  12%{background:rgba(0,255,255,0.1);transform:skew(3deg);}
+  18%{background:transparent;transform:skew(0deg);}
+  24%{background:rgba(255,0,255,0.08);transform:skew(-5deg);}
+  30%{background:rgba(0,255,0,0.08);transform:skew(5deg);}
+  36%{background:transparent;transform:skew(0deg);}
+  42%{background:rgba(0,0,255,0.08);transform:skew(3deg);}
+  50%{background:#000;transform:skew(0deg);}
+  65%{background:#000;}
+  80%{background:rgba(0,0,0,0.6);}
+  100%{background:transparent;}
+}
+#intro.shake{animation:shake 0.5s ease-out;}
+@keyframes shake{0%,100%{transform:translate(0);}10%{transform:translate(-3px,2px) rotate(0.5deg);}20%{transform:translate(3px,-1px) rotate(-0.3deg);}30%{transform:translate(-2px,3px) rotate(0.7deg);}40%{transform:translate(2px,-2px) rotate(-0.4deg);}50%{transform:translate(-1px,1px) rotate(0.2deg);}60%{transform:translate(1px,-2px) rotate(-0.5deg);}70%{transform:translate(-3px,1px) rotate(0.3deg);}80%{transform:translate(2px,-1px) rotate(-0.2deg);}90%{transform:translate(-1px,2px) rotate(0.4deg);}}
 </style>
 </head>
 <body>
@@ -121,11 +144,15 @@ canvas{display:block;}
 </div>
 <div id="intro">
   <div id="introContent">
-    <h1>THE SYSTEM</h1>
+    <div id="titleGlitch">
+      <span>T</span><span>H</span><span>E</span><span class="sp"></span>
+      <span>S</span><span>Y</span><span>S</span><span>T</span><span>E</span><span>M</span>
+    </div>
     <div class="sub">Press ENTER to begin</div>
     <button id="introBegin">ENTER</button>
   </div>
 </div>
+<div id="glitchOverlay"></div>
 <div id="bottomBar">
   <div class="telem"><span class="lbl">Time</span><span class="val" id="tTime">1.0x</span></div>
   <div class="sep"></div>
@@ -605,9 +632,10 @@ function updateCam(dt){
   let ob=null,mu=muSun,gp=new THREE.Vector3(0,0,0),soiDist=Infinity;
   pMeshes.forEach(pm=>{const d=cam.position.distanceTo(pm.mesh.position);if(d<pm.data.soi&&d<soiDist){soiDist=d;ob=pm;mu=pm.data.µ;gp.copy(pm.mesh.position);}});
   orbitBody=ob;
-  if(ob){cam.position.sub(gp);mu=ob.data.µ;}else{mu=muSun;}
-  const r=cam.position.length(),dir=cam.position.clone().normalize();
-  if(r>0.01){const grav=mu/(r*r);flyVel.addScaledVector(dir.clone().negate(),grav*dt);}
+  if(!ob)mu=muSun;
+  const relPos=ob?new THREE.Vector3().copy(cam.position).sub(gp):cam.position.clone();
+  const r=relPos.length();
+  if(r>0.01){const dir=relPos.clone().negate().normalize();const grav=mu/(r*r);flyVel.addScaledVector(dir,grav*dt);}
   const thrustAcc=throttle*0.06;
   if(keys['w'])flyVel.addScaledVector(fwd,thrustAcc*dt);
   if(keys['s'])flyVel.addScaledVector(fwd,-thrustAcc*dt);
@@ -617,15 +645,14 @@ function updateCam(dt){
   if(keys['e'])flyVel.y-=thrustAcc*dt*0.3;
   const ms=maxSpeed();const spd=flyVel.length();if(spd>ms)flyVel.multiplyScalar(ms/spd);
   cam.position.addScaledVector(flyVel,dt);
-  if(ob)cam.position.add(gp);
   const ratio=ms>0?spd/ms:0;
   // Orbit line prediction
   if(orbitLine){scene.remove(orbitLine);orbitLine.geometry.dispose();orbitLine.material.dispose();orbitLine=null;}
   if(ob&&r>0.01){
-    const hVec=new THREE.Vector3().crossVectors(cam.position,flyVel);
+    const hVec=new THREE.Vector3().crossVectors(relPos,flyVel);
     const h=hVec.length();const spd2=flyVel.lengthSq();const eVal=spd2/2-mu/r;
     const a=-mu/(2*eVal);if(a>0){
-      const eVec=new THREE.Vector3().crossVectors(flyVel,hVec).divideScalar(mu).sub(cam.position.clone().normalize());
+      const eVec=new THREE.Vector3().crossVectors(flyVel,hVec).divideScalar(mu).sub(relPos.clone().normalize());
       const e=eVec.length();const periapsis=a*(1-e),apoapsis=a*(1+e);
       const p=periapsis*(1+e);const n=hVec.clone().normalize();const pDir=eVec.clone().normalize();const qDir=new THREE.Vector3().crossVectors(n,pDir).normalize();
       const pts=[];for(let i=0;i<=128;i++){const nu=2*Math.PI*i/128;const rNu=p/(1+e*Math.cos(nu));const op=new THREE.Vector3().addScaledVector(pDir,rNu*Math.cos(nu)).addScaledVector(qDir,rNu*Math.sin(nu));op.add(gp);pts.push(op);}
@@ -638,13 +665,12 @@ function updateCam(dt){
   vignette.style.opacity=Math.min(1,spd/10)*0.5;
   cam.lookAt(cam.position.clone().add(new THREE.Vector3(-Math.sin(flyYaw)*Math.cos(flyPitch),Math.sin(flyPitch),-Math.cos(flyYaw)*Math.cos(flyPitch)).multiplyScalar(100)));
   if(pNode){let nd=1e9,np=null;pMeshes.forEach(pm=>{const d=cam.position.distanceTo(pm.mesh.position);if(d<nd){nd=d;np=pm;}});if(np&&nd<5){const g=Math.max(0,1-nd/5);pNode.gain.setTargetAtTime(g*g*0.3,actx.currentTime,0.1);const h=parseInt(np.data.tex.charCodeAt(0)||64);pOsc.frequency.setTargetAtTime(100+h*5,actx.currentTime,0.2);}else{pNode.gain.setTargetAtTime(0,actx.currentTime,0.3);}}
-  const dist=cam.position.length();
-  document.getElementById('tAlt').textContent=ob?(dist-ob.data.r).toFixed(2):dist<100?dist.toFixed(1)+' AU':(dist/1000).toFixed(2)+' kly';
+  document.getElementById('tAlt').textContent=ob?(r-ob.data.r).toFixed(2):r<100?r.toFixed(1)+' AU':(r/1000).toFixed(2)+' kly';
   document.getElementById('tFlySpeed').textContent=spd.toFixed(3)+(ob?'':'/'+ms);
   document.getElementById('tMode').textContent=ob?'Orbit':'Free';
   document.getElementById('tThrottle').textContent=(throttle*100).toFixed(0)+'%';
   document.getElementById('tOrbitBody').textContent=ob?ob.data.name:'Sun';
-  galaxyGroup.visible=dist>3000;
+  galaxyGroup.visible=cam.position.length()>1000;
 }
 
 let time=0;
@@ -726,17 +752,37 @@ document.getElementById('setPlanetAudio').addEventListener('input',e=>{CFG.plane
 document.getElementById('setCamSpeed').addEventListener('input',e=>{CFG.camSpeed=parseInt(e.target.value);});
 
 
+(function initTitle(){
+  const chars=document.querySelectorAll('#titleGlitch span:not(.sp)');
+  const pool='\u2588\u2593\u2592\u2591\u2584\u2580\u25A0\u25A1\u25AC\u2590\u2550\u25CF\u25C9\u25C6\u25A3\u25A4\u25A5\u25A6\u25A7\u25A8\u25A9\u25B2\u25BC\u25C0\u25B6\u2610\u2637\u26A1\u27C1\u27D0\u27E1\u27E2\u27E3\u27E4\u27E5';
+  let glitchInt=setInterval(()=>{
+    chars.forEach(c=>{if(Math.random()<0.12){const o=c.textContent;c.textContent=pool[Math.floor(Math.random()*pool.length)];c.classList.add('flick');setTimeout(()=>{c.textContent=o;c.classList.remove('flick');},80+Math.random()*100);}});
+  },180);
+  window._clearTitleGlitch=()=>clearInterval(glitchInt);
+})();
+document.addEventListener('keydown',function enterKey(e){if(e.key==='Enter'&&!GAME.started){e.preventDefault();document.getElementById('introBegin').click();this.removeEventListener('keydown',enterKey);}});
 document.getElementById('introBegin').addEventListener('click',()=>{
-  document.getElementById('intro').classList.add('hidden');
-  document.getElementById('gameBar').style.display='flex';
-  GAME.started=true;
-  if(!loadGame()){
-    showNotif('THE SYSTEM','You are in orbit around Earth.<br><br><b>W/S</b> thrust fwd/back · <b>A/D</b> strafe · <b>Q/E</b> up/down · <b>Shift/Ctrl</b> throttle ±5%<br><b>Space</b> toggle full throttle · <b>Drag</b> to look · <b>Escape</b> panels<br><br>Burn <b>prograde</b> (W) to raise orbit — reach <b>escape velocity</b> to leave Earth.<br><br><b>B</b> Build · <b>T</b> Research · <b>L</b> Launch · <b>R</b> Roadster orbit<br><br><span style="font-size:9px;opacity:0.5">Max speed: <b>0.5 AU/s</b>. Research <b>Chemical Rockets</b> to reach 2.<br>Unlock <b>Alcubierre Warp</b> for Tab fast-travel.</span>',[{label:'Begin',fn:()=>{}}]);
-  }
-  CFG.camSpeed=Math.min(CFG.camSpeed,maxSpeed());
-  initA();
+  if(window._clearTitleGlitch)window._clearTitleGlitch();
+  document.getElementById('intro').classList.add('shake');
+  const overlay=document.getElementById('glitchOverlay');
+  overlay.style.display='block';
+  overlay.classList.add('active');
+  const go=()=>{
+    overlay.style.display='none';
+    overlay.classList.remove('active');
+    document.getElementById('intro').classList.add('hidden');
+    document.getElementById('intro').classList.remove('shake');
+    document.getElementById('gameBar').style.display='flex';
+    GAME.started=true;
+    if(!loadGame()){
+      showNotif('THE SYSTEM','You are in orbit around Earth.<br><br><b>W/S</b> thrust fwd/back &middot; <b>A/D</b> strafe &middot; <b>Q/E</b> up/down &middot; <b>Shift/Ctrl</b> throttle &plusmn;5%<br><b>Space</b> toggle full throttle &middot; <b>Drag</b> to look &middot; <b>Escape</b> panels<br><br>Burn <b>prograde</b> (W) to raise orbit &mdash; reach <b>escape velocity</b> to leave Earth.<br><br><b>B</b> Build &middot; <b>T</b> Research &middot; <b>L</b> Launch &middot; <b>R</b> Roadster orbit<br><br><span style="font-size:9px;opacity:0.5">Max speed: <b>0.5 AU/s</b>. Research <b>Chemical Rockets</b> to reach 2.<br>Unlock <b>Alcubierre Warp</b> for Tab fast-travel.</span>',[{label:'Begin',fn:()=>{}}]);
+    }
+    CFG.camSpeed=Math.min(CFG.camSpeed,maxSpeed());
+    initA();
+  };
+  setTimeout(go,600);
 });
-{const ei=pData.findIndex(p=>p.name==='Earth'),ea=oAngles[ei],ex=pData[ei].dist*Math.cos(ea),ez=pData[ei].dist*Math.sin(ea);const or=0.45,ov=Math.sqrt(0.003/or);cam.position.set(ex,0,ez+or);flyVel.set(-ov,0,0);flyYaw=0;flyPitch=0;focusI=ei+1;}
+{const ei=pData.findIndex(p=>p.name==='Earth'),ea=oAngles[ei],ex=pData[ei].dist*Math.cos(ea),ez=pData[ei].dist*Math.sin(ea);const or=0.45,ov=Math.sqrt(0.003/or),eav=pData[ei].spd*0.3;cam.position.set(ex,0,ez+or);flyVel.set(-ov-ez*eav,0,ex*eav);flyYaw=0;flyPitch=0;focusI=ei+1;}
 
 {const fc=document.createElement('canvas'),fx=fc.getContext('2d'),fl=document.getElementById('favicon');fc.width=32;fc.height=32;
 (function f(){const t=Date.now()/1000;fx.clearRect(0,0,32,32);
