@@ -311,6 +311,27 @@ starSystems.forEach(ss=>{
   });
 });
 
+const constR=900;
+const consData={
+  Orion:{col:0x88bbff,st:[[1,0,2],[-1,0,2],[0,1,2],[2,2,1],[-2,2,1],[0,-2,1],[1,-3,0],[-1,-3,0]],ln:[[0,1],[2,0],[2,1],[2,3],[2,4],[3,5],[4,5],[6,0],[7,1]]},
+  UrsaMajor:{col:0xbbddff,st:[[-3,1,3],[0,0,4],[2,-1,4],[4,0,3],[3,2,1],[0,3,0],[-2,2,1]],ln:[[0,1],[1,2],[2,3],[3,4],[4,5],[5,6]]},
+  Cassiopeia:{col:0xffddaa,st:[[-3,2,2],[-1,3,1],[1,2,2],[2,3,0],[3,1,1]],ln:[[0,1],[1,2],[2,3],[3,4]]},
+  Cygnus:{col:0xccddff,st:[[0,5,0],[1,2,1],[-1,2,1],[2,0,2],[-2,0,2],[0,-1,3]],ln:[[1,0],[2,0],[3,1],[4,2],[3,5],[4,5]]},
+  Scorpius:{col:0xff8866,st:[[0,4,2],[1,3,1],[-1,3,1],[2,1,0],[-2,1,0],[1,-1,-1],[-1,-1,-1],[0,-3,-2]],ln:[[0,1],[0,2],[1,3],[2,4],[3,5],[4,6],[5,7],[6,7]]},
+};
+const consGroup=new THREE.Group();scene.add(consGroup);
+const cTex=mkGlowTex();
+Object.entries(consData).forEach(([name,d])=>{
+  const pts=d.st.map(p=>{const l=Math.sqrt(p[0]*p[0]+p[1]*p[1]+p[2]*p[2]);return new THREE.Vector3(p[0]/l*constR,p[1]/l*constR,p[2]/l*constR);});
+  const sps=new THREE.BufferGeometry().setFromPoints(pts);const spM=new THREE.PointsMaterial({color:d.col,size:1.5,transparent:true,opacity:0.9,sizeAttenuation:true,depthWrite:false});
+  consGroup.add(new THREE.Points(sps,spM));
+  const lnPos=[];d.ln.forEach(([a,b])=>{lnPos.push(pts[a],pts[b]);});
+  const lnG=new THREE.BufferGeometry().setFromPoints(lnPos);const lnM=new THREE.LineBasicMaterial({color:d.col,transparent:true,opacity:0.12});
+  consGroup.add(new THREE.LineSegments(lnG,lnM));
+  const cx=pts.reduce((s,p)=>s.add(p),new THREE.Vector3()).divideScalar(pts.length).normalize().multiplyScalar(constR*1.05);
+  const sprite=new THREE.Sprite(new THREE.SpriteMaterial({map:cTex,color:0xffffff,transparent:true,opacity:0.15,blending:THREE.AdditiveBlending,depthWrite:false}));sprite.position.copy(cx);sprite.scale.set(15,15,1);consGroup.add(sprite);
+});
+
 const galaxyGroup=new THREE.Group();scene.add(galaxyGroup);
 const GR=12000,GT=200,CR=3000,AW=2.8;
 const N=60000,gPos=new Float32Array(N*3),gCol=new Float32Array(N*3);
@@ -565,8 +586,9 @@ function updateCam(dt){
   const ms=maxSpeed();const spd=flyVel.length();if(spd>ms)flyVel.multiplyScalar(ms/spd);
   const ratio=ms>0?spd/ms:0;
   flyVel.multiplyScalar(Math.max(0,1-3*dt));cam.position.addScaledVector(flyVel,dt);
-  const baseFov=rightHeld?20:60;cam.fov=baseFov+ratio*35;cam.updateProjectionMatrix();
-  vignette.style.opacity=Math.min(1,ratio*1.8);
+  const speedFactor=Math.min(1,spd/120);const warp=speedFactor*speedFactor;
+  const baseFov=rightHeld?20:60;cam.fov=baseFov+warp*35;cam.updateProjectionMatrix();
+  vignette.style.opacity=warp*0.85;
   cam.lookAt(cam.position.clone().add(new THREE.Vector3(-Math.sin(flyYaw)*Math.cos(flyPitch),Math.sin(flyPitch),-Math.cos(flyYaw)*Math.cos(flyPitch)).multiplyScalar(100)));
   if(pNode){let nd=1e9,np=null;pMeshes.forEach(pm=>{const d=cam.position.distanceTo(pm.mesh.position);if(d<nd){nd=d;np=pm;}});if(np&&nd<5){const g=Math.max(0,1-nd/5);pNode.gain.setTargetAtTime(g*g*0.3,actx.currentTime,0.1);const h=parseInt(np.data.col.toString(16),16);pOsc.frequency.setTargetAtTime(100+((h&0xff)+(h>>8&0xff))*0.5,actx.currentTime,0.2);}else{pNode.gain.setTargetAtTime(0,actx.currentTime,0.3);}}
   const dist=cam.position.length();
