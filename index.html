@@ -88,7 +88,7 @@ canvas{display:block;}
 </style>
 </head>
 <body>
-<div id="hud">WASD fly · Drag look · Q/E up/down · Esc</div>
+<div id="hud">WASD fly · Drag look · Q/E up/down · Collect orbs · Esc</div>
 <div id="focusInfo"><span class="name" id="focusName">Earth</span><br><span id="focusDist"></span><br><span id="focusType" style="font-size:9px;opacity:0.5;"></span></div>
 <div id="travelOverlay"></div>
 <div id="objectMenu"></div>
@@ -236,6 +236,23 @@ pData.forEach((p,pi)=>{
 });
 pData.forEach(p=>{const pts=[];for(let i=0;i<=64;i++){const a=(i/64)*Math.PI*2;pts.push(new THREE.Vector3(p.dist*Math.cos(a),0,p.dist*Math.sin(a)));}scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),new THREE.LineBasicMaterial({color:0x181828,transparent:true,opacity:0.1})));});
 
+const earthGroup=new THREE.Group();scene.add(earthGroup);
+const earthIdx=pData.findIndex(p=>p.name==='Earth');
+{const SL=5000,slP=new Float32Array(SL*3);for(let i=0;i<SL;i++){const th=Math.random()*Math.PI*2,ph=Math.acos(2*Math.random()-1),r=0.38+Math.random()*0.02;slP[i*3]=r*Math.sin(ph)*Math.cos(th);slP[i*3+1]=r*Math.sin(ph)*Math.sin(th);slP[i*3+2]=r*Math.cos(ph);}const slG=new THREE.BufferGeometry();slG.setAttribute('position',new THREE.BufferAttribute(slP,3));earthGroup.add(new THREE.Points(slG,new THREE.PointsMaterial({color:0x88ddff,size:0.008,transparent:true,opacity:0.6,blending:THREE.AdditiveBlending,depthWrite:false,sizeAttenuation:true})));}
+const satM=new THREE.MeshBasicMaterial({color:0x88aaff});
+{for(let i=0;i<60;i++){const th=Math.random()*Math.PI*2,ph=Math.acos(2*Math.random()-1),r=0.38+Math.random()*0.015;const b=new THREE.Mesh(new THREE.BoxGeometry(0.008,0.003,0.003),satM);b.position.set(r*Math.sin(ph)*Math.cos(th),r*Math.sin(ph)*Math.sin(th),r*Math.cos(ph));b.lookAt(0,0,0);earthGroup.add(b);}}
+{for(let i=0;i<12;i++){const th=Math.random()*Math.PI*2,r=0.42+Math.random()*0.005;const b=new THREE.Mesh(new THREE.BoxGeometry(0.01,0.004,0.004),satM);b.position.set(r*Math.cos(th),(Math.random()-0.5)*0.005,r*Math.sin(th));b.lookAt(0,0,0);earthGroup.add(b);}}
+const iss=new THREE.Group();const issBody=new THREE.Mesh(new THREE.BoxGeometry(0.03,0.008,0.005),new THREE.MeshBasicMaterial({color:0xcccccc}));iss.add(issBody);const issWing=new THREE.Mesh(new THREE.BoxGeometry(0.04,0.002,0.001),new THREE.MeshBasicMaterial({color:0x224488}));issWing.position.x=0;issWing.position.z=-0.003;iss.add(issWing);const issWing2=issWing.clone();issWing2.position.z=0.003;iss.add(issWing2);iss.position.set(0.38,0,0);earthGroup.add(iss);
+const hubble=new THREE.Mesh(new THREE.CylinderGeometry(0.004,0.004,0.015,6),new THREE.MeshBasicMaterial({color:0x886644}));hubble.position.set(0.39,0.005,0.01);hubble.rotation.x=0.3;earthGroup.add(hubble);
+{const geoTh=Math.random()*Math.PI*2;for(let i=0;i<8;i++){const a=geoTh+i*Math.PI/4;const g=new THREE.Mesh(new THREE.SphereGeometry(0.005,4,4),new THREE.MeshBasicMaterial({color:0xff8844}));g.position.set(0.42*Math.cos(a),0,0.42*Math.sin(a));earthGroup.add(g);}}
+
+const rdBody=new THREE.Mesh(new THREE.BoxGeometry(0.06,0.025,0.025),new THREE.MeshBasicMaterial({color:0xcc2222}));
+const rdCabin=new THREE.Mesh(new THREE.BoxGeometry(0.03,0.015,0.02),new THREE.MeshBasicMaterial({color:0x444466,transparent:true,opacity:0.6}));rdCabin.position.set(0.015,0.015,0);
+const rdWheel=(x,z)=>{const w=new THREE.Mesh(new THREE.CylinderGeometry(0.008,0.008,0.004,6),new THREE.MeshBasicMaterial({color:0x222222}));w.position.set(x,-0.01,z);w.rotation.x=Math.PI/2;return w;};
+const roadster=new THREE.Group();roadster.add(rdBody);roadster.add(rdCabin);roadster.add(rdWheel(0.02,0.014));roadster.add(rdWheel(0.02,-0.014));roadster.add(rdWheel(-0.02,0.014));roadster.add(rdWheel(-0.02,-0.014));
+const rdGlow=new THREE.Sprite(new THREE.SpriteMaterial({map:mkGlowTex(),color:0xff4444,transparent:true,opacity:0.15,blending:THREE.AdditiveBlending,depthWrite:false}));rdGlow.scale.set(0.2,0.2,1);roadster.add(rdGlow);
+let rdAngle=Math.random()*Math.PI*2;const rdDist=55+Math.random()*10;const rdInc=0.1;scene.add(roadster);allObjs.push({name:"Starman's Roadster",type:'comet',mesh:roadster,dist:rdDist,parent:'Sun'});
+
 const AC=500,astP=new Float32Array(AC*3),astS=new Float32Array(AC);
 for(let i=0;i<AC;i++){const a=Math.random()*Math.PI*2,r=38+Math.random()*18;astP[i*3]=r*Math.cos(a);astP[i*3+1]=(Math.random()-0.5)*2;astP[i*3+2]=r*Math.sin(a);astS[i]=0.02+Math.random()*0.06;}
 const astG=new THREE.BufferGeometry();astG.setAttribute('position',new THREE.BufferAttribute(astP,3));astG.setAttribute('aSize',new THREE.BufferAttribute(astS,1));
@@ -250,6 +267,29 @@ const ON=500,oP=new Float32Array(ON*3),oS=new Float32Array(ON);
 for(let i=0;i<ON;i++){const th=Math.random()*Math.PI*2,ph=Math.acos(2*Math.random()-1),r=800+Math.random()*1000;oP[i*3]=r*Math.sin(ph)*Math.cos(th);oP[i*3+1]=r*Math.sin(ph)*Math.sin(th);oP[i*3+2]=r*Math.cos(ph);oS[i]=0.04+Math.random()*0.08;}
 const oG=new THREE.BufferGeometry();oG.setAttribute('position',new THREE.BufferAttribute(oP,3));oG.setAttribute('aSize',new THREE.BufferAttribute(oS,1));
 scene.add(new THREE.Points(oG,new THREE.PointsMaterial({color:0x667788,size:0.3,transparent:true,opacity:0.3,blending:THREE.AdditiveBlending,depthWrite:false,sizeAttenuation:true})));
+
+const resNodes=[],resCols={energy:0xffcc33,matter:0xcc8844,data:0x44ccff};
+const resTex=(()=>{const{c,x}=mkC(32,32);const g=x.createRadialGradient(16,16,0,16,16,16);g.addColorStop(0,'rgba(255,255,255,0.9)');g.addColorStop(0.3,'rgba(255,255,255,0.3)');g.addColorStop(1,'rgba(255,255,255,0)');x.fillStyle=g;x.fillRect(0,0,32,32);return new THREE.CanvasTexture(c);})();
+function spawnResNode(pos,type,amount){
+  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:resTex,color:resCols[type],transparent:true,opacity:0.7,blending:THREE.AdditiveBlending,depthWrite:false}));
+  sp.position.copy(pos);sp.scale.set(1,1,1);scene.add(sp);
+  resNodes.push({sp,type,amount,pos:pos.clone(),cooldown:0,collected:false});
+}
+pData.forEach(p=>{
+  for(let i=0;i<2+Math.floor(Math.random()*2);i++){
+    const a=Math.random()*Math.PI*2,d=p.dist+0.5+Math.random()*2;
+    const t=i===0?'energy':i===1?'matter':'data';
+    spawnResNode(new THREE.Vector3(d*Math.cos(a),(Math.random()-0.5)*2.5,d*Math.sin(a)),t,1+Math.floor(Math.random()*3));
+  }
+});
+for(let i=0;i<25;i++){
+  const a=Math.random()*Math.PI*2,r=40+Math.random()*14;
+  spawnResNode(new THREE.Vector3(r*Math.cos(a),(Math.random()-0.5)*1.5,r*Math.sin(a)),'matter',3+Math.floor(Math.random()*8));
+}
+for(let i=0;i<10;i++){
+  const a=Math.random()*Math.PI*2,r=100+Math.random()*250;
+  spawnResNode(new THREE.Vector3(r*Math.cos(a),(Math.random()-0.5)*5,r*Math.sin(a)),'data',5+Math.floor(Math.random()*10));
+}
 
 const hSphere=new THREE.Mesh(new THREE.SphereGeometry(2200,16,12),new THREE.MeshBasicMaterial({color:0x224488,transparent:true,opacity:0.04,depthWrite:false}));
 scene.add(hSphere);
@@ -541,10 +581,26 @@ function sim(dt){
     if(pm.ring)pm.ring.position.copy(pm.mesh.position);
     if(pm.atmo)pm.atmo.position.copy(pm.mesh.position);
     pm.moons.forEach(m=>{m.angle+=m.data.spd*sdt*0.3;const md=m.data.d;m.mesh.position.set(x+Math.cos(m.angle)*md,y+Math.sin(m.angle*0.7)*0.1,z+Math.sin(m.angle)*md);});
+    if(idx===earthIdx)earthGroup.position.set(x,y,z);
   });
+  rdAngle+=0.05*sdt;const rdx=rdDist*Math.cos(rdAngle),rdz=rdDist*Math.sin(rdAngle),rdy=Math.sin(rdAngle*2)*rdInc*rdDist;roadster.position.set(rdx,rdy,rdz);roadster.rotation.y=-rdAngle;
   for(let i=0;i<wN;i++){wL[i]+=sdt;if(wL[i]>wML[i]){spW(i);continue;}const ix=i*3,px=wP[ix],py=wP[ix+1],pz=wP[ix+2];const d=Math.sqrt(px*px+py*py+pz*pz);if(d>0.1){const g=5/(d*d);wV[ix]-=(px/d)*g*sdt;wV[ix+1]-=(py/d)*g*sdt;wV[ix+2]-=(pz/d)*g*sdt;}wV[ix]*=0.999;wV[ix+1]*=0.999;wV[ix+2]*=0.999;wP[ix]+=wV[ix]*sdt;wP[ix+1]+=wV[ix+1]*sdt;wP[ix+2]+=wV[ix+2]*sdt;const lr=wL[i]/wML[i];wC[ix]=1*(1-lr*0.5);wC[ix+1]=(0.6+0.3*(1-lr))*(1-lr*0.3);wC[ix+2]=(0.1+0.2*(1-lr))*(1-lr*0.5);}
   wG.attributes.position.needsUpdate=true;wG.attributes.color.needsUpdate=true;
   sunM.scale.setScalar(1+0.02*Math.sin(time*0.8));
+  resNodes.forEach(n=>{
+    n.cooldown-=dt;
+    if(n.cooldown<0&&n.collected){n.collected=false;n.sp.visible=true;}
+    if(n.collected)return;
+    n.sp.material.opacity=0.4+0.3*Math.sin(time*2+n.pos.x);
+    n.sp.scale.setScalar(0.8+0.2*Math.sin(time*1.5+n.pos.z));
+    if(cam.position.distanceTo(n.pos)<1.5){
+      GAME[n.type]+=n.amount;n.collected=true;n.sp.visible=false;n.cooldown=30+Math.random()*60;
+      const el=document.createElement('div');el.style.cssText=`position:fixed;top:${40+Math.random()*20}%;left:${45+Math.random()*10}%;color:${n.type==='energy'?'#fc3':n.type==='matter'?'#c88':'#8cf'};font:bold 14px monospace;pointer-events:none;z-index:10;opacity:1;transition:all 1s`;
+      el.textContent=`+${n.amount} ${n.type}`;document.body.appendChild(el);
+      setTimeout(()=>{el.style.opacity='0';el.style.transform='translateY(-20px)';setTimeout(()=>el.remove(),1000);},200);
+      updateGameBar();saveGame();
+    }
+  });
   if(GAME.launchTimer>0){GAME.launchTimer-=dt;if(GAME.launchTimer<=0){if(GAME.launchExgal){GAME.launchExgal=false;exgalacticTravel();}else if(GAME.launchTarget!=null&&GAME.launchTarget>=0){GAME.rockets=Math.max(0,GAME.rockets-1);travelTo(GAME.launchTarget);showNotif('Arrival',`Your vessel has reached ${allObjs[GAME.launchTarget].name}!`);}GAME.launchTarget=null;}}
 }
 
@@ -596,7 +652,7 @@ document.getElementById('introBegin').addEventListener('click',()=>{
   document.getElementById('gameBar').style.display='flex';
   GAME.started=true;
   if(!loadGame()){
-    showNotif('THE SYSTEM','Your thrusters are limited. Speed is capped by your technology level.<br><br><b>Research</b> propulsion tech to fly faster.<br><b>Build</b> infrastructure to gather resources.<br><b>Launch</b> rockets to distant worlds.<br><br><b>WASD</b> fly · <b>Drag</b> look · <b>Q/E</b> up/down<br><b>B</b> Build · <b>T</b> Research · <b>L</b> Launch · <b>G</b> Galaxy<br><br><span style="font-size:9px;opacity:0.5">Current max speed: <b>0.5 AU/s</b>. Research Chemical Rockets to reach 2.<br>Unlock Alcubierre Warp to enable Tab fast-travel between objects.</span>',[{label:'Begin',fn:()=>{}}]);
+    showNotif('THE SYSTEM','Your thrusters are limited. Speed is capped by your technology level.<br><br><b>Research</b> propulsion tech to fly faster.<br><b>Build</b> infrastructure to gather resources.<br><b>Launch</b> rockets to distant worlds.<br><br><b>WASD</b> fly · <b>Drag</b> look · <b>Q/E</b> up/down · <b>Fly near</b> glowing orbs to collect<br><b>B</b> Build · <b>T</b> Research · <b>L</b> Launch · <b>G</b> Galaxy<br><br><span style="font-size:9px;opacity:0.5">Current max speed: <b>0.5 AU/s</b>. Research Chemical Rockets to reach 2.<br>Unlock Alcubierre Warp to enable Tab fast-travel between objects.</span>',[{label:'Begin',fn:()=>{}}]);
   }
   CFG.camSpeed=Math.min(CFG.camSpeed,maxSpeed());
   initA();
