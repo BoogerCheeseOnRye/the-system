@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>THE SYSTEM</title>
+<link rel="icon" id="favicon" href="data:,">
 <style>
 *{margin:0;padding:0;box-sizing:border-box;}
 body{overflow:hidden;background:#000;font-family:'Courier New',monospace;color:#ccc;}
@@ -685,6 +686,16 @@ document.getElementById('introBegin').addEventListener('click',()=>{
 });
 cam.position.set(5,2.5,3.5);flyYaw=-1.2;flyPitch=-0.12;focusI=3;
 
+{const fc=document.createElement('canvas'),fx=fc.getContext('2d'),fl=document.getElementById('favicon');fc.width=32;fc.height=32;
+(function f(){const t=Date.now()/1000;fx.clearRect(0,0,32,32);
+for(let i=0;i<12;i++){const sx=(i*37+13)%32,sy=(i*53+7)%32;fx.fillStyle=`rgba(255,255,255,${0.3+Math.sin(t+i)*0.2})`;fx.fillRect(sx,sy,1,1);}
+const sr=4+Math.sin(t*2)*0.5,g=fx.createRadialGradient(16,16,0,16,16,sr);g.addColorStop(0,'#fff');g.addColorStop(0.5,'#fc3');g.addColorStop(1,'#f60');
+fx.beginPath();fx.arc(16,16,sr,0,Math.PI*2);fx.fillStyle=g;fx.fill();
+const a1=t*1.5;fx.beginPath();fx.arc(16+Math.cos(a1)*10,16+Math.sin(a1)*10,2,0,Math.PI*2);fx.fillStyle='#48f';fx.fill();
+const a2=t*0.9+1;fx.beginPath();fx.arc(16+Math.cos(a2)*6,16+Math.sin(a2)*6,1.5,0,Math.PI*2);fx.fillStyle='#f84';fx.fill();
+fx.beginPath();fx.arc(16,16,10,0,Math.PI*2);fx.strokeStyle='rgba(255,255,255,0.15)';fx.lineWidth=0.5;fx.stroke();
+fx.beginPath();fx.arc(16,16,6,0,Math.PI*2);fx.strokeStyle='rgba(255,255,255,0.1)';fx.lineWidth=0.5;fx.stroke();
+fl.href=fc.toDataURL();requestAnimationFrame(f);})();}
 
 </script>
 </body>
