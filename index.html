@@ -88,7 +88,7 @@ canvas{display:block;}
 </style>
 </head>
 <body>
-<div id="hud">WASD fly · Drag look · Scroll zoom · Q/E up/down · Esc</div>
+<div id="hud">WASD fly · Drag look · Q/E up/down · Esc</div>
 <div id="focusInfo"><span class="name" id="focusName">Earth</span><br><span id="focusDist"></span><br><span id="focusType" style="font-size:9px;opacity:0.5;"></span></div>
 <div id="travelOverlay"></div>
 <div id="objectMenu"></div>
@@ -596,7 +596,7 @@ document.getElementById('introBegin').addEventListener('click',()=>{
   document.getElementById('gameBar').style.display='flex';
   GAME.started=true;
   if(!loadGame()){
-    showNotif('THE SYSTEM','Your thrusters are limited. Speed is capped by your technology level.<br><br><b>Research</b> propulsion tech to fly faster.<br><b>Build</b> infrastructure to gather resources.<br><b>Launch</b> rockets to distant worlds.<br><br><b>WASD</b> fly · <b>Drag</b> look · <b>Scroll</b> zoom · <b>Q/E</b> up/down<br><b>B</b> Build · <b>T</b> Research · <b>L</b> Launch · <b>G</b> Galaxy<br><br><span style="font-size:9px;opacity:0.5">Current max speed: <b>0.5 AU/s</b>. Research Chemical Rockets to reach 2.<br>Unlock Alcubierre Warp to enable Tab fast-travel between objects.</span>',[{label:'Begin',fn:()=>{}}]);
+    showNotif('THE SYSTEM','Your thrusters are limited. Speed is capped by your technology level.<br><br><b>Research</b> propulsion tech to fly faster.<br><b>Build</b> infrastructure to gather resources.<br><b>Launch</b> rockets to distant worlds.<br><br><b>WASD</b> fly · <b>Drag</b> look · <b>Q/E</b> up/down<br><b>B</b> Build · <b>T</b> Research · <b>L</b> Launch · <b>G</b> Galaxy<br><br><span style="font-size:9px;opacity:0.5">Current max speed: <b>0.5 AU/s</b>. Research Chemical Rockets to reach 2.<br>Unlock Alcubierre Warp to enable Tab fast-travel between objects.</span>',[{label:'Begin',fn:()=>{}}]);
   }
   CFG.camSpeed=Math.min(CFG.camSpeed,maxSpeed());
   initA();
